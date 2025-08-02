@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEF NAV Dashboard</title>
+<style>
+ *{box-sizing:border-box}
+ body{font-family:Arial, sans-serif;background:#fff;color:#000;margin:16px}
+ table{border-collapse:collapse;width:100%;max-width:900px}
+ th,td{border:1px solid #000;padding:0px;text-align:left;font-size:14px}
+ th{background:#eee;font-weight:bold}
+ .discount{background:#ffe6e6}
+ .premium{background:#e6ffe6}
+ .neutral{background:#f9f9f9}
+</style>
+</head>
+<body>
+    <p>Premium/Discount % = (Market Price − NAV) ÷ NAV × 100<br>
+    NAV = (Market Value of All Securities + Cash & Equivalents − Fund Liabilities) ÷ Total Shares Outstanding</p>
+<table id="cefTable">
+ <thead>
+  <tr>
+   <th>Ticker</th><th>NAV</th><th>Shares</th><th>Market Price</th>
+   <th>Type</th><th>± %</th><th>Action</th><th>Amt</th>
+  </tr>
+ </thead>
+ <tbody></tbody>
+</table>
+<script>
+const NEUTRAL = 0.01;                 // 1 bp threshold
+const fmtUSD  = v => v.toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2});
+const fmtPct  = v => (v>0?'+':'')+v.toFixed(2)+'%';
+
+const funds = [
+ {ticker:'XAI',  nav:50.00, shares:50, price:50.00},
+ {ticker:'GOF',  nav:50.00, shares:50, price:45.00},
+ {ticker:'GUG',  nav:50.00, shares:50, price:55.00}
+];
+
+const tbody = document.querySelector('#cefTable tbody');
+
+function calcPremium(price, nav){ return (price-nav)/nav*100; }
+
+function render(){
+ tbody.innerHTML = funds.map(f=>{
+   const prem   = calcPremium(f.price,f.nav);
+   const absPrem= Math.abs(prem);
+   const cls    = absPrem<NEUTRAL ? 'neutral' : prem>0 ? 'premium' : 'discount';
+   const type   = absPrem<NEUTRAL ? 'NEUTRAL' : prem>0 ? 'PREMIUM' : 'DISCOUNT';
+   const action = absPrem<NEUTRAL ? '-' : prem>0 ? 'BURN' : 'MINT';
+   const amt    = absPrem<NEUTRAL ? 0 : (f.shares*Math.abs(f.price-f.nav)/f.price).toFixed(6);
+
+   return `<tr class="${cls}">
+     <td>${f.ticker}</td>
+     <td>${fmtUSD(f.nav)}</td>
+     <td>${f.shares}</td>
+     <td>${fmtUSD(f.price)}</td>
+     <td>${type}</td>
+     <td>${fmtPct(prem)}</td>
+     <td>${action}</td>
+     <td>${amt}</td>
+   </tr>`;
+ }).join('');
+}
+
+function tick(){
+ funds.forEach(f=>{
+   const drift = Math.random()*0.004 - 0.002;        // ±0.2 %
+   f.price = Math.max(0.01, f.price * (1 + drift));
+ });
+ render();
+}
+
+render();
+const timer = setInterval(tick, 3000);
+
+window.addEventListener('pagehide',()=>clearInterval(timer));
+</script>
+
+</body>
+  <img src="https://xft.sh/t.gif?page=/h=cef-nav" referrerpolicy="origin-when-cross-origin" width="1" height="1" style="border:0;position:absolute;left:-9999px;"/>
+</html>
